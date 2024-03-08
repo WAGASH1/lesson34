@@ -44,10 +44,49 @@ public class ReportController {
 
     // 日報詳細画面
     @GetMapping(value = "/{id}/")
-    public String detail(@PathVariable String id, Model model) {
+    public String detail(@PathVariable int id, Model model) {
 
         model.addAttribute("report", reportService.findById(id));
         return "reports/detail";
+    }
+
+    // 従業員更新画面表示
+    @GetMapping(value = "/{id}/update")
+    public String edit(@PathVariable("id") int id,@AuthenticationPrincipal UserDetail userDetail, Model model) {
+        model.addAttribute("report", reportService.findById(id));
+        model.addAttribute("employeeName", userDetail.getEmployee().getName());
+
+        return "reports/update";
+    }
+
+    //従業員更新処理
+    @PostMapping(value = "/{id}/update")
+    public String postUser(@Validated Report report, BindingResult res, @AuthenticationPrincipal UserDetail userDetail, Model model) {
+        model.addAttribute("employeeName", userDetail.getEmployee().getName());
+
+     // 入力チェック
+        if (res.hasErrors()) {
+            model.addAttribute("employeeName", userDetail.getEmployee().getName());
+            return "reports/update";
+        }
+
+        try {
+
+            // 従業員情報を使用して日報を保存
+            ErrorKinds result = reportService.update(report);
+
+            if (ErrorMessage.contains(result)) {
+                model.addAttribute(ErrorMessage.getErrorName(result), ErrorMessage.getErrorValue(result));
+                return "reports/update";
+            }
+
+        } catch (DataIntegrityViolationException e) {
+            model.addAttribute(ErrorMessage.getErrorName(ErrorKinds.DUPLICATE_EXCEPTION_ERROR),
+                    ErrorMessage.getErrorValue(ErrorKinds.DUPLICATE_EXCEPTION_ERROR));
+            return "reports/update";
+        }
+
+        return "redirect:/reports";
     }
 
     // 日報新規登録画面
@@ -63,6 +102,7 @@ public class ReportController {
     public String add(@Validated Report report, BindingResult res, @AuthenticationPrincipal UserDetail userDetail, Model model) {
         // 入力チェック
         if (res.hasErrors()) {
+            model.addAttribute("employeeName", userDetail.getEmployee().getName());
             return "reports/new";
         }
 

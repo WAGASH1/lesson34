@@ -47,6 +47,18 @@ public class ReportService {
             return ErrorKinds.SUCCESS;
         }
 
+    @Transactional // 日報更新
+    public ErrorKinds update(Report report) {
+
+        LocalDateTime now = LocalDateTime.now();
+        report.setUpdatedAt(now);
+
+        Report newCreat = findById(report.getId());
+        report.setCreatedAt(newCreat.getCreatedAt());
+
+        reportRepository.save(report);
+        return ErrorKinds.SUCCESS;
+    }
 
     // 従業員一覧表示処理
     public List<Report> findAll() {
@@ -60,10 +72,9 @@ public class ReportService {
     }
 
     // 1件を検索
-    public Report findById(String id) {
-        // findByIdで検索
-        Optional<Report> option = reportRepository.findById(id);
-        // 取得できなかった場合はnullを返す
+    public Report findById(int id) {
+        String stringId = String.valueOf(id);
+        Optional<Report> option = reportRepository.findById(stringId);
         Report report = option.orElse(null);
         return report;
     }
