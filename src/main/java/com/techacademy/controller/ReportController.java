@@ -3,6 +3,7 @@ package com.techacademy.controller;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.validation.BindingResult;
@@ -19,7 +20,6 @@ import com.techacademy.entity.Employee;
 import com.techacademy.entity.Report;
 import com.techacademy.service.ReportService;
 import com.techacademy.service.UserDetail;
-import org.springframework.security.core.annotation.AuthenticationPrincipal;
 
 @Controller
 @RequestMapping("reports")
@@ -34,10 +34,15 @@ public class ReportController {
 
     // 日報一覧画面
     @GetMapping
-    public String list(Model model) {
-
-        model.addAttribute("listSize", reportService.findAll().size());
-        model.addAttribute("reportList", reportService.findAll());
+    public String list(Model model, @AuthenticationPrincipal UserDetail userDetail) {
+        // ユーザーが管理者であるかどうかを確認
+        if (userDetail.getAuthorities().contains(new SimpleGrantedAuthority("ADMIN"))) {
+            model.addAttribute("listSize", reportService.findAll().size());
+            model.addAttribute("reportList", reportService.findAll());
+        } else {
+            model.addAttribute("listSize", reportService.findAllReports(userDetail).size());
+            model.addAttribute("reportList", reportService.findAllReports(userDetail));
+        }
 
         return "reports/list";
     }
@@ -50,21 +55,22 @@ public class ReportController {
         return "reports/detail";
     }
 
-    // 従業員更新画面表示
+    // 日報更新画面表示
     @GetMapping(value = "/{id}/update")
-    public String edit(@PathVariable("id") int id,@AuthenticationPrincipal UserDetail userDetail, Model model) {
+    public String edit(@PathVariable("id") int id, @AuthenticationPrincipal UserDetail userDetail, Model model) {
         model.addAttribute("report", reportService.findById(id));
         model.addAttribute("employeeName", userDetail.getEmployee().getName());
 
         return "reports/update";
     }
 
-    //従業員更新処理
+    // 日報更新処理
     @PostMapping(value = "/{id}/update")
-    public String postUser(@Validated Report report, BindingResult res, @AuthenticationPrincipal UserDetail userDetail, Model model) {
+    public String postUser(@Validated Report report, BindingResult res, @AuthenticationPrincipal UserDetail userDetail,
+            Model model) {
         model.addAttribute("employeeName", userDetail.getEmployee().getName());
 
-     // 入力チェック
+        // 入力チェック
         if (res.hasErrors()) {
             model.addAttribute("employeeName", userDetail.getEmployee().getName());
             return "reports/update";
@@ -73,7 +79,8 @@ public class ReportController {
         try {
 
             // 従業員情報を使用して日報を保存
-            ErrorKinds result = reportService.update(report);
+            Employee employee = userDetail.getEmployee();
+            ErrorKinds result = reportService.update(report, employee);
 
             if (ErrorMessage.contains(result)) {
                 model.addAttribute(ErrorMessage.getErrorName(result), ErrorMessage.getErrorValue(result));
@@ -99,7 +106,8 @@ public class ReportController {
 
     // 従業員新規登録処理
     @PostMapping(value = "/add")
-    public String add(@Validated Report report, BindingResult res, @AuthenticationPrincipal UserDetail userDetail, Model model) {
+    public String add(@Validated Report report, BindingResult res, @AuthenticationPrincipal UserDetail userDetail,
+            Model model) {
         // 入力チェック
         if (res.hasErrors()) {
             model.addAttribute("employeeName", userDetail.getEmployee().getName());
@@ -122,6 +130,21 @@ public class ReportController {
             model.addAttribute(ErrorMessage.getErrorName(ErrorKinds.DUPLICATE_EXCEPTION_ERROR),
                     ErrorMessage.getErrorValue(ErrorKinds.DUPLICATE_EXCEPTION_ERROR));
             return "reports/new";
+        }
+
+        return "redirect:/reports";
+    }
+
+    // 従業員削除処理
+    @PostMapping(value = "/{id}/delete")
+    public String delete(@PathVariable int id, @AuthenticationPrincipal UserDetail userDetail, Model model) {
+
+        ErrorKinds result = reportService.delete(id, userDetail);
+
+        if (ErrorMessage.contains(result)) {
+            model.addAttribute(ErrorMessage.getErrorName(result), ErrorMessage.getErrorValue(result));
+            model.addAttribute("report", reportService.findById(id));
+            return detail(id, model);
         }
 
         return "redirect:/reports";

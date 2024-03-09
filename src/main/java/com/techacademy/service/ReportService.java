@@ -5,7 +5,10 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.core.userdetails.User;
 import org.springframework.stereotype.Service;
 import com.techacademy.constants.ErrorKinds;
 import com.techacademy.entity.Employee;
@@ -17,39 +20,60 @@ import org.springframework.transaction.annotation.Transactional;
 public class ReportService {
 
     private final ReportRepository reportRepository;
-    private final PasswordEncoder passwordEncoder;
+
+    // ログインしているユーザーに関連する日報のみを取得
+    public List<Report> findAllReports(UserDetail userDetail) {
+        // ユーザーが管理者であるかどうかを確認
+        if (userDetail.getAuthorities().contains(new SimpleGrantedAuthority("ADMIN"))) {
+            // 管理者の場合はすべての日報を取得
+            return reportRepository.findAll();
+        } else {
+            // 一般ユーザーの場合はユーザーに関連する日報のみを取得
+            Employee userEmployee = userDetail.getEmployee(); // 現在のユーザーの従業員情報を取得
+            return reportRepository.findByEmployee(userEmployee);
+        }
+    }
 
     @Autowired
-    public ReportService(ReportRepository reportRepository, PasswordEncoder passwordEncoder) {
+    public ReportService(ReportRepository reportRepository) {
         this.reportRepository = reportRepository;
-        this.passwordEncoder = passwordEncoder;
     }
 
     // 日報保存
     @Transactional
     public ErrorKinds save(Report report, Employee employee) {
 
-        Report existingReport = reportRepository.findByReportDate(report.getReportDate());
+//        if (ReportExists(report)) {
+//            return ErrorKinds.DATECHECK_ERROR;
+//        }
+        report.setEmployee(employee);
+        report.setDeleteFlg(false);
 
-        // 既存の日報が見つかった場合はエラーを返す
-        if (existingReport != null) {
-            return ErrorKinds.DATECHECK_ERROR;
-        }
+        LocalDateTime now = LocalDateTime.now();
+        report.setCreatedAt(now);
+        report.setUpdatedAt(now);
 
-            report.setEmployee(employee);
-            report.setDeleteFlg(false);
+        reportRepository.save(report);
+        return ErrorKinds.SUCCESS;
+    }
 
-            LocalDateTime now = LocalDateTime.now();
-            report.setCreatedAt(now);
-            report.setUpdatedAt(now);
+    // 日報削除
+    @Transactional
+    public ErrorKinds delete(int id, UserDetail userDetail) {
+        Report report = findById(id);
 
-            reportRepository.save(report);
-            return ErrorKinds.SUCCESS;
-        }
+        LocalDateTime now = LocalDateTime.now();
+        report.setUpdatedAt(now);
+        report.setDeleteFlg(true);
+
+        return ErrorKinds.SUCCESS;
+    }
 
     @Transactional // 日報更新
-    public ErrorKinds update(Report report) {
+    public ErrorKinds update(Report report, Employee employee) {
 
+        report.setEmployee(employee);
+        report.setDeleteFlg(false);
         LocalDateTime now = LocalDateTime.now();
         report.setUpdatedAt(now);
 
@@ -65,11 +89,12 @@ public class ReportService {
         return reportRepository.findAll();
     }
 
-    // 日付を使用して日報を検索
-    @Transactional(readOnly = true)
-    public Report findByReportDate(LocalDate reportDate) {
-        return reportRepository.findByReportDate(reportDate);
-    }
+    // 名前、日付の重複確認
+//    public boolean ReportExists(Report report) {
+//        // 日報の日付と従業員を使用して既存の日報を検索
+//        Report existingReport = reportRepository.findByEmployeeDate(report.getReportDate(), report.getEmployee());
+//        return existingReport != null;
+//    }
 
     // 1件を検索
     public Report findById(int id) {
@@ -77,6 +102,12 @@ public class ReportService {
         Optional<Report> option = reportRepository.findById(stringId);
         Report report = option.orElse(null);
         return report;
+    }
+
+    // 従業員の検索
+    @Transactional
+    public List<Report> findByEmployee(Employee employee) {
+        return reportRepository.findByEmployee(employee);
     }
 
 }
