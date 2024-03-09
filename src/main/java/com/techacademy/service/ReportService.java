@@ -1,14 +1,10 @@
 package com.techacademy.service;
 
-import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.security.core.Authentication;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
-import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.security.core.userdetails.User;
 import org.springframework.stereotype.Service;
 import com.techacademy.constants.ErrorKinds;
 import com.techacademy.entity.Employee;
@@ -43,7 +39,7 @@ public class ReportService {
     @Transactional
     public ErrorKinds save(Report report, Employee employee) {
 
-        if (ReportExists(report)) {
+        if (reportExists(report)) {
             return ErrorKinds.DATECHECK_ERROR;
         }
         report.setEmployee(employee);
@@ -69,7 +65,8 @@ public class ReportService {
         return ErrorKinds.SUCCESS;
     }
 
-    @Transactional // 日報更新
+    // 日報更新
+    @Transactional
     public ErrorKinds update(Report report, Employee employee) {
 
         report.setEmployee(employee);
@@ -90,10 +87,10 @@ public class ReportService {
     }
 
     // 名前、日付の重複確認
-    public boolean ReportExists(Report report) {
+    public boolean reportExists(Report report) {
         // 日報の日付と従業員を使用して既存の日報を検索
-        Report existingReport = reportRepository.findByEmployeeDate(report.getReportDate(), report.getEmployee());
-        return existingReport != null;
+        List<Report> existingReports = reportRepository.findByEmployeeDate(report.getEmployee(), report.getReportDate());
+        return !existingReports.isEmpty();
     }
 
     // 1件を検索
