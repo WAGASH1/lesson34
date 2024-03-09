@@ -16,5 +16,5 @@ public interface ReportRepository extends JpaRepository<Report, String> {
     List<Report> findByEmployee(Employee employee);
 
     // 日付と従業員に基づいて日報を取得
-//    Report findByEmployeeDate(LocalDate reportDate, Report report);
+    Report findByEmployeeDate(LocalDate reportDate, Employee employee);
 }

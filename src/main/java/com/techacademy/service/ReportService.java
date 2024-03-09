@@ -43,9 +43,9 @@ public class ReportService {
     @Transactional
     public ErrorKinds save(Report report, Employee employee) {
 
-//        if (ReportExists(report)) {
-//            return ErrorKinds.DATECHECK_ERROR;
-//        }
+        if (ReportExists(report)) {
+            return ErrorKinds.DATECHECK_ERROR;
+        }
         report.setEmployee(employee);
         report.setDeleteFlg(false);
 
@@ -90,11 +90,11 @@ public class ReportService {
     }
 
     // 名前、日付の重複確認
-//    public boolean ReportExists(Report report) {
-//        // 日報の日付と従業員を使用して既存の日報を検索
-//        Report existingReport = reportRepository.findByEmployeeDate(report.getReportDate(), report.getEmployee());
-//        return existingReport != null;
-//    }
+    public boolean ReportExists(Report report) {
+        // 日報の日付と従業員を使用して既存の日報を検索
+        Report existingReport = reportRepository.findByEmployeeDate(report.getReportDate(), report.getEmployee());
+        return existingReport != null;
+    }
 
     // 1件を検索
     public Report findById(int id) {
